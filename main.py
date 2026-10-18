@@ -1,7 +1,11 @@
 """Запуск работы всей игры"""
+import tkinter as tk
 import sys
 from words import *
 from game import *
+from ui import WordlyApp
+
+WINDOW_SIZE = "650x650"
 
 def main():
     try:
@@ -12,11 +16,11 @@ def main():
         sys.exit(1)
 
     allowed = set(allowed) | set(answers)
-    answer = assign_secret(answers)
+    root = tk.Tk()
+    root.geometry(WINDOW_SIZE)
+    app = WordlyApp(root,answers,allowed)
+    root.mainloop()
 
-    game = Game(answer, allowed)
-
-    print("Make interface")
 
 if __name__ == '__main__':
     main()
