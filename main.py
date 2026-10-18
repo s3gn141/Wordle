@@ -5,7 +5,7 @@ from words import *
 from game import *
 from ui import WordlyApp
 
-WINDOW_SIZE = "650x650"
+WINDOW_SIZE = "780x910"
 
 def main():
     try:

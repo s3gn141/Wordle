@@ -14,11 +14,18 @@ COLOR_CELL_ABSENT = "#3a3a3c"
 COLOR_CELL_PRESENT = "#b59f3b"
 COLOR_CELL_CORRECT = "#538d4e"
 COLOR_TEXT = "white"
+COLOR_KEY_BG = "#818384"
 
 FONT_FAMILY = "Helvetica"
 FONT_CELL = (FONT_FAMILY, 28, "bold")
 FONT_TITLE = (FONT_FAMILY, 28, "bold")
 FONT_MESSAGE = (FONT_FAMILY, 14)
+FONT_KEY = (FONT_FAMILY, 14, "bold")
+
+KEYBOARD_ROWS = ("qwertyuiop", "asdfghjkl", "zxcvbnm")  
+SIZE_KEY_WIDTH = 40  
+SIZE_KEY_HEIGHT = 52  
+KEY_GAP = 3
 
 SIZE_CELL = 62
 CELL_GAP = 4
@@ -28,6 +35,7 @@ COUNT_COLUMNS = WORD_LENGTH
 COUNT_LINES = COUNT_TRIES
 
 COND_TO_COLOR = {ABSENT:COLOR_CELL_ABSENT, PRESENT:COLOR_CELL_PRESENT, CORRECT:COLOR_CELL_CORRECT}
+STATUS_PRIORITY = {ABSENT: 1, PRESENT: 2, CORRECT: 3}
 
 class WordlyApp:
     def __init__(self, root, answers, allowed):
@@ -35,6 +43,8 @@ class WordlyApp:
         self.answers = answers
         self.allowed = allowed
         self.cells = []
+        self.keys = {}
+        self.letter_states = {}
 
         self.root.title("WORDLY")
         self.root.configure(background=COLOR_BG)
@@ -48,6 +58,7 @@ class WordlyApp:
         self.build_title()
         self.build_message_label()
         self.build_board()
+        self.build_keyboard()
         self.start_new_game()
         
 
@@ -84,6 +95,31 @@ class WordlyApp:
         label.pack(fill="both", expand=True)
         return label
 
+    def build_keyboard(self):
+        keyboard = tk.Frame(self.root, bg=COLOR_BG)
+        keyboard.pack(pady=(0, 20))
+
+        for row_letters in KEYBOARD_ROWS:
+            row_frame = tk.Frame(keyboard, bg=COLOR_BG)
+            row_frame.pack(pady=KEY_GAP)
+            for letter in row_letters:
+                self.keys[letter] = self.make_key(row_frame, letter)
+
+    def make_key(self, master, letter):
+        frame = tk.Frame(master, width=SIZE_KEY_WIDTH, height=SIZE_KEY_HEIGHT, bg=COLOR_BG)
+        frame.pack(side="left", padx=KEY_GAP)
+        frame.pack_propagate(False)
+        label = tk.Label(frame, text=letter.upper(), font=FONT_KEY, bg=COLOR_KEY_BG, fg=COLOR_TEXT)
+        label.pack(fill="both", expand=True)
+        return label
+
+    def update_keyboard(self, word, statuses):
+        for letter, status in zip(word, statuses):
+            old_status = self.letter_states.get(letter)
+            if old_status is None or STATUS_PRIORITY[status] > STATUS_PRIORITY[old_status]:
+                self.letter_states[letter] = status
+                self.keys[letter].configure(bg=COND_TO_COLOR[status])
+
     def start_new_game(self):
         answer = assign_secret(self.answers)
         self.game = Game(answer,self.allowed)
@@ -119,12 +155,14 @@ class WordlyApp:
     def send_word(self):
         if not self.game.is_over():
             try:
-                attempt = self.game.make_guess("".join(self.input_word))
+                word = "".join(self.input_word) 
+                attempt = self.game.make_guess(word)
             except InvalidMoveError as error:
                 self.message_label.configure(text=error)
             else:
                 self.message_label.configure(text="")
                 self.paint_row(self.current_line, attempt)
+                self.update_keyboard(word, attempt)
                 self.current_line+=1
                 if self.game.is_win():
                     self.message_label.configure(text="Вы отгадали слово, поздравляем!!!")
