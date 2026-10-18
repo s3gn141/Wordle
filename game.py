@@ -44,4 +44,4 @@ class Game:
             
             
     def is_over(self):
-        return self.count_tries == 0 or self.is_win()
+        return self.count_tries <= 0 or self.is_win()

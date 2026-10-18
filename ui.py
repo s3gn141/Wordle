@@ -1,15 +1,18 @@
 """Ответственнен за весь ввод и вывод"""
 import tkinter as tk
-from words import WORD_LENGTH
-from game import COUNT_TRIES
+from words import WORD_LENGTH, assign_secret
+from game import COUNT_TRIES, Game, InvalidMoveError, GameOverError
 from checker import ABSENT,PRESENT,CORRECT
+from functools import partial
 
+
+ALPHABET = 'abcdefghijklnmopqrstuvwxyz'
 COLOR_BG = "black"
 COLOR_CELL_BG = "black"
 COLOR_CELL_FRAME = "white"
-COLOR_CELL_ABSENT = "grey"
-COLOR_CELL_PRESENT = "yellow"
-COLOR_CELL_CORRECT = "green"
+COLOR_CELL_ABSENT = "#3a3a3c"
+COLOR_CELL_PRESENT = "#b59f3b"
+COLOR_CELL_CORRECT = "#538d4e"
 COLOR_TEXT = "white"
 
 FONT_FAMILY = "Helvetica"
@@ -36,10 +39,17 @@ class WordlyApp:
         self.root.title("WORDLY")
         self.root.configure(background=COLOR_BG)
         self.root.resizable(False,False)
+        self.root.bind("<Key>", self.process_input)
+
+        self.current_line = 0
+        self.input_word = []
+        self.game = None
 
         self.build_title()
         self.build_message_label()
         self.build_board()
+        self.start_new_game()
+        
 
     def build_title(self):
         title = tk.Label(self.root, text="WORDLY", font=FONT_TITLE, bg=COLOR_BG, fg=COLOR_TEXT)
@@ -73,3 +83,58 @@ class WordlyApp:
         label = tk.Label(frame, text="", font=FONT_CELL, bg=COLOR_CELL_BG, fg=COLOR_TEXT)
         label.pack(fill="both", expand=True)
         return label
+
+    def start_new_game(self):
+        answer = assign_secret(self.answers)
+        self.game = Game(answer,self.allowed)
+        self.current_line = 0
+        self.input_word = []
+        self.message_label.configure(text="")
+        for row in range(len(self.cells)):
+            for col in range(WORD_LENGTH):
+                self.cells[row][col].configure(text="")
+
+        print("New game started")
+        print(f"Answer is: {self.game.answer}")
+
+    def process_input(self, event):
+        #print(f"Key pressed: {event.char} | Keysym: {event.keysym}")
+        if event.keysym == "BackSpace":
+            self.delete_letter()
+        elif event.keysym == "Return":
+            self.send_word()
+        elif event.keysym.lower() in ALPHABET:
+            self.add_letter(event.keysym.lower())
+
+    def add_letter(self,letter):
+        if len(self.input_word) < WORD_LENGTH and not self.game.is_over():
+            self.input_word.append(letter)
+            self.cells[self.current_line][len(self.input_word)-1].configure(text=letter)
+
+    def delete_letter(self):
+        if self.input_word:
+            self.cells[self.current_line][len(self.input_word)-1].configure(text="")
+            self.input_word.pop()
+    
+    def send_word(self):
+        if not self.game.is_over():
+            try:
+                attempt = self.game.make_guess("".join(self.input_word))
+            except InvalidMoveError as error:
+                self.message_label.configure(text=error)
+            else:
+                self.message_label.configure(text="")
+                self.paint_row(self.current_line, attempt)
+                self.current_line+=1
+                if self.game.is_win():
+                    self.message_label.configure(text="Вы отгадали слово, поздравляем!!!")
+                elif self.game.is_over():
+                    self.message_label.configure(text=f"Вы проиграли( Загаданное слово было {self.game.answer}")
+                self.input_word = []
+                print(self.game.count_tries)
+        else:
+            self.message_label.configure(text=f"Игра окончена, вы не можете делать ходы")
+
+    def paint_row(self, row, statuses):
+        for i,status in enumerate(statuses):
+            self.cells[row][i].configure(bg=COND_TO_COLOR[status])
