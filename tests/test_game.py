@@ -1,6 +1,7 @@
 import pytest
 
 from game import COUNT_TRIES, Game, GameOverError, InvalidMoveError
+from checker import ABSENT, CORRECT, PRESENT
 
 ALLOWED = {"apple", "crane", "plane"}
 
@@ -30,7 +31,7 @@ def test_invalid_guess_does_not_spend_attempt():
         with pytest.raises(InvalidMoveError):
             game.make_guess(bad_word)
 
-    assert game.count_tries == COUNT_TRIES
+    assert game.attempts_left == COUNT_TRIES
     assert game.attempts == []
 
 
@@ -43,3 +44,13 @@ def test_loss_after_all_attempts_used():
     assert not game.is_win()
     with pytest.raises(GameOverError):
         game.make_guess("crane")
+
+def test_letter_states_keep_best_status():
+    game = Game("apple", {"ppppp", "crane"})
+    game.make_guess("ppppp")
+    game.make_guess("crane")
+    states = game.letter_states
+    assert states["p"] == CORRECT
+    assert states["a"] == PRESENT
+    assert states["c"] == ABSENT
+    assert "z" not in states

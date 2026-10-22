@@ -1,21 +1,49 @@
 """Следим за состоянием партии и соблюдением правил игры"""
 from words import WORD_LENGTH, check_word_validity
-from checker import CORRECT, check_guess
+from checker import ABSENT, PRESENT, CORRECT, check_guess
+
+
+COUNT_TRIES = 6
+
+STATE_PLAYING = "playing"
+STATE_WON = "won"
+STATE_LOST = "lost"
+
+STATUS_PRIORITY = {ABSENT: 1, PRESENT: 2, CORRECT: 3}
 
 class InvalidMoveError(Exception):
     """Ошибка для неправильного хода"""
+
 class GameOverError(Exception):
     """Ошибка если игру уже окончена но хотят сделать ход"""
-
-COUNT_TRIES = 6
 
 class Game:
 
     def __init__(self, answer, allowed):
         self.answer = answer
         self.allowed = allowed
-        self.count_tries = COUNT_TRIES
         self.attempts = []
+
+    @property
+    def attempts_left(self):
+        return COUNT_TRIES - len(self.attempts)
+
+    @property
+    def state(self):
+        if self.is_win():
+            return STATE_WON
+        if self.attempts_left <= 0:
+            return STATE_LOST
+        return STATE_PLAYING
+
+    @property
+    def letter_states(self):
+        states = {}
+        for word, statuses in self.attempts:
+            for letter, status in zip(word, statuses):
+                if letter not in states or STATUS_PRIORITY[status] > STATUS_PRIORITY[states[letter]]:
+                    states[letter] = status
+        return states
 
     def make_guess(self, guess):
         if self.is_over():
@@ -30,7 +58,6 @@ class Game:
         if not check_word_validity(guess, self.allowed):
             raise InvalidMoveError("Такого слова нет в словаре, попробуйте другое")
         
-        self.count_tries -= 1
         attempt = check_guess(guess, self.answer)
         self.attempts.append(tuple([guess,attempt]))
 
@@ -44,4 +71,4 @@ class Game:
             
             
     def is_over(self):
-        return self.count_tries <= 0 or self.is_win()
+        return self.state != STATE_PLAYING
